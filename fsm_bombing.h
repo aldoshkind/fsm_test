@@ -93,6 +93,10 @@ public:
 			return;
 		}
 
+		auto a = f->get_aircraft();
+		a->ControlAltReq(a->GetPosition().z);
+		a->ControlCourseReq(a->get_course());
+
 		if(f->get_target() != nullptr)
 		{
 			f->set_state(STATE_MOVE_AWAY);
@@ -255,6 +259,10 @@ public:
 		{
 			f->set_state(STATE_WAITING);
 		}
+
+		auto a = f->get_aircraft();
+		a->ControlAltReq(a->GetPosition().z);
+		a->ControlCourseReq(a->get_course());
 
 		if(b->IsDead() == false)
 		{

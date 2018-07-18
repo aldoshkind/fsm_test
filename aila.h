@@ -36,6 +36,12 @@ public:
 		return GetTurnRadius(speed, GetPosition().z) / speed;
 	}
 
+	float get_course() const
+	{
+		float course = M_PI / 2.0 - atan2(VectorVelocity().y, VectorVelocity().x);
+		return course;
+	}
+
 	// для бомбы
 	cVector getImpactPoint()												// "электронный выстрел" - возвращает точку	встречи бомбы с землёй
 	{
@@ -81,11 +87,7 @@ public:
 			float rspeed = dc / dt;
 			float max_rspeed = get_max_course_rate();
 			rspeed = clamped(rspeed, -max_rspeed, max_rspeed);
-
-			printf("dc %f rspeed %f\n", dc, rspeed);
-
 			rspeed *= dt;
-
 			float cs = cos(rspeed);
 			float sn = sin(rspeed);
 			float rx = VectorVelocity().x * cs + VectorVelocity().y * sn;
