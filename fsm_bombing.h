@@ -76,18 +76,58 @@ private:
 	float			bombing_alt;
 };
 
-class state_waiting : public state
+
+class state_bombing_base : public state
 {
 public:
-	/*constructor*/ state_waiting(fsm_bombing *machine)
+	/*constructor*/ state_bombing_base(fsm_bombing *machine) : f(machine) {}
+	/*destructor*/ ~state_bombing_base() {}
+
+	fsm_bombing *get_fsm() const
 	{
-		f = machine;
+		return f;
 	}
+
+protected:
+	cVector get_target_pos_prediction(float prediction_gap = 0.0) const
+	{
+		auto f = get_fsm();
+		auto a = f->get_aircraft();
+		auto t = f->get_target();
+
+		float fall_time = a->getFallTime(f->get_bombing_alt());
+		auto target_pos_prediction = t->GetPosition() + t->VectorVelocity() * (fall_time + prediction_gap);
+
+		return target_pos_prediction;
+	}
+
+
+	float get_course_to_target() const
+	{
+		auto a = f->get_aircraft();
+
+		auto vec_to_target = get_target_pos_prediction() - a->GetPosition();
+
+		float course = M_PI / 2.0 - atan2(vec_to_target.y, vec_to_target.x);
+
+		return course;
+	}
+
+private:
+	fsm_bombing *f;
+};
+
+
+class state_waiting : public state_bombing_base
+{
+public:
+	/*constructor*/ state_waiting(fsm_bombing *machine) : state_bombing_base(machine) {}
 
 	/*destructor*/ ~state_waiting(){}
 
 	void update()
 	{
+		auto f = get_fsm();
 		if(f == nullptr || f->get_aircraft() == nullptr)
 		{
 			return;
@@ -103,26 +143,20 @@ public:
 			return;
 		}
 	}
-
-private:
-	fsm_bombing *f;
 };
 
 
 
 
-class state_move_away : public state
+class state_move_away : public state_bombing_base
 {
 public:
-	/*constructor*/ state_move_away(fsm_bombing *machine)
-	{
-		f = machine;
-	}
-
+	/*constructor*/ state_move_away(fsm_bombing *machine) : state_bombing_base(machine) {}
 	/*destructor*/ ~state_move_away(){}
 
 	void update()
 	{
+		auto f = get_fsm();
 		if(f == nullptr || f->get_aircraft() == nullptr)
 		{
 			return;
@@ -152,25 +186,19 @@ public:
 			a->ControlCourseReq(course);
 		}
 	}
-
-private:
-	fsm_bombing *f;
 };
 
 
 
-class state_reaching : public state
+class state_reaching : public state_bombing_base
 {
 public:
-	/*constructor*/ state_reaching(fsm_bombing *machine)
-	{
-		f = machine;
-	}
-
+	/*constructor*/ state_reaching(fsm_bombing *machine) : state_bombing_base(machine) {}
 	/*destructor*/ ~state_reaching(){}
 
 	void update()
 	{
+		auto f = get_fsm();
 		if(f == nullptr || f->get_aircraft() == nullptr)
 		{
 			return;
@@ -194,37 +222,16 @@ public:
 	}
 
 private:
-	cVector get_target_pos_prediction(float prediction_gap = 0.0) const
-	{
-		auto a = f->get_aircraft();
-		auto t = f->get_target();
-
-		float fall_time = a->getFallTime(f->get_bombing_alt());
-		auto target_pos_prediction = t->GetPosition() + t->VectorVelocity() * (fall_time + prediction_gap);
-
-		return target_pos_prediction;
-	}
-
-
-	float get_course_to_target() const
-	{
-		auto a = f->get_aircraft();
-
-		auto vec_to_target = get_target_pos_prediction() - a->GetPosition();
-
-		float course = M_PI / 2.0 - atan2(vec_to_target.y, vec_to_target.x);
-
-		return course;
-	}
-
 	bool is_alt_achieved() const
 	{
+		auto f = get_fsm();
 		auto a = f->get_aircraft();
 		return fabs(a->GetPosition().z - f->get_bombing_alt()) < alt_compare_thresh;
 	}
 
 	bool is_pos_achieved() const
 	{
+		auto f = get_fsm();
 		auto a = f->get_aircraft();
 		// текущее расстояние между точкой падения и предсказанным положением цели
 		float current_distance = (a->getImpactPoint() - get_target_pos_prediction()).length2();
@@ -244,24 +251,19 @@ private:
 
 		return achieved;
 	}
-
-	fsm_bombing *f;
 };
 
 
 
-class state_confirming : public state
+class state_confirming : public state_bombing_base
 {
 public:
-	/*constructor*/ state_confirming(fsm_bombing *machine)
-	{
-		f = machine;
-	}
-
-	/*destructor*/ ~state_confirming(){}
+	/*constructor*/ state_confirming(fsm_bombing *machine) : state_bombing_base(machine) {}
+	/*destructor*/ ~state_confirming() {}
 
 	void update()
 	{
+		auto f = get_fsm();
 		if(f == nullptr || f->get_aircraft() == nullptr)
 		{
 			return;
@@ -277,9 +279,16 @@ public:
 
 		auto a = f->get_aircraft();
 		a->ControlAltReq(a->GetPosition().z);
-		a->ControlCourseReq(a->get_course());
+		a->ControlCourseReq(get_course_to_target());
 
+		// если бомба ещё не взорвалась, то ждём дальше
 		if(b->IsDead() == false)
+		{
+			return;
+		}
+
+		// если на расстоянии большем, чем можем видеть цель, то ждём приближения
+		if((a->GetPosition() - t->GetPosition()).length2() > a->get_confirmation_distance())
 		{
 			return;
 		}
@@ -293,8 +302,8 @@ public:
 		{
 			f->set_state(STATE_MOVE_AWAY);
 		}
-	}
 
-private:
-	fsm_bombing *f;
+		delete b;
+		f->set_bomb(nullptr);
+	}
 };

@@ -16,6 +16,12 @@ public:
 
 	void ControlAltReq(float altReq) {target_alt = altReq;}					// поддержание заданной высоты
 	void ControlCourseReq(float courseReq) {target_course = courseReq;}		// поддержание заданного курса
+
+	float get_confirmation_distance() const
+	{
+		return 30;
+	}
+
 	float get_min_speed() const
 	{
 		return 100;															// умозрительно
