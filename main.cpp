@@ -36,10 +36,11 @@ int main()
 
 	fb.set_state(STATE_WAITING);
 
+	// частота обновления - 10 Гц
+	w.set_update_frequency(10);
 	for(int i = 0 ; ; i += 1)
 	{
-		// частота обновления - 10 Гц
-		w.update(i * 0.1);
+		w.update(i / w.get_update_frequency());
 
 		fb.update();
 		if(i == 20)

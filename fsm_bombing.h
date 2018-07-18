@@ -194,13 +194,13 @@ public:
 	}
 
 private:
-	cVector get_target_pos_prediction() const
+	cVector get_target_pos_prediction(float prediction_gap = 0.0) const
 	{
 		auto a = f->get_aircraft();
 		auto t = f->get_target();
 
 		float fall_time = a->getFallTime(f->get_bombing_alt());
-		auto target_pos_prediction = t->GetPosition() + t->VectorVelocity() * fall_time;
+		auto target_pos_prediction = t->GetPosition() + t->VectorVelocity() * (fall_time + prediction_gap);
 
 		return target_pos_prediction;
 	}
@@ -226,8 +226,23 @@ private:
 	bool is_pos_achieved() const
 	{
 		auto a = f->get_aircraft();
-		printf("bomb dist %f\n", (a->getImpactPoint() - get_target_pos_prediction()).length2());
-		return (a->getImpactPoint() - get_target_pos_prediction()).length2() < a->getImpactRadius();
+		// текущее расстояние между точкой падения и предсказанным положением цели
+		float current_distance = (a->getImpactPoint() - get_target_pos_prediction()).length2();
+
+		// продолжительность такта
+		float tick_size = 1.0f / f->get_target()->get_world()->get_update_frequency();
+		// предсказанное положение ЛА
+		cVector predicted_pos = a->GetPosition() + a->VectorVelocity() * tick_size;
+		auto predicted_impact_point = a->getImpactPoint(predicted_pos, a->VectorVelocity());
+		// предсказанное расстояние между точкой падения и предсказанным положением цели
+		float predicted_distance = (predicted_impact_point - get_target_pos_prediction(tick_size)).length2();
+
+		printf("bomb dist curr %f pred %f\n", current_distance, predicted_distance);
+
+		// точка достигнута в том случае, если зашли в радиус поражения и предсказанное расстояние больше текущего, т.е. начнётся отдаление
+		bool achieved = (current_distance < a->getImpactRadius()) && (predicted_distance > current_distance);
+
+		return achieved;
 	}
 
 	fsm_bombing *f;

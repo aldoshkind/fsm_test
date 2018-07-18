@@ -25,4 +25,16 @@ public:
 			}
 		}
 	}
+
+	void set_update_frequency(float freq)
+	{
+		update_frequency = freq;
+	}
+
+	float get_update_frequency() const
+	{
+		return update_frequency;
+	}
+private:
+	float update_frequency;
 };

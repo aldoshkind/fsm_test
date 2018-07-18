@@ -45,8 +45,15 @@ public:
 	// для бомбы
 	cVector getImpactPoint()												// "электронный выстрел" - возвращает точку	встречи бомбы с землёй
 	{
-		return GetPosition() + VectorVelocity() * getFallTime(GetPosition().z);
+		return getImpactPoint(GetPosition(), VectorVelocity());
 	}
+
+	cVector getImpactPoint(const cVector &pos, const cVector &velocity)
+	{
+		return pos + velocity * getFallTime(pos.z);
+	}
+
+
 	float getImpactShift(float alt, float speed)
 	{
 		return speed * getFallTime(alt);
